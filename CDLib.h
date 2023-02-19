@@ -10,7 +10,6 @@ unsigned char databufferid;
 
 unsigned char audiobuffer[524288]; // Buffer for 256 sectors, how convenient
 unsigned char audiobufferid;
-unsigned char lastsentaudiobuffer;
 
 int current_chunk, target_chunk;
 int callback_running, sectors_read, last_sector_id, remaining_data_sectors, remaining_audio_sectors;
@@ -26,6 +25,15 @@ void PlayCD() {
 	CdlLOC loc;
 
 	StopCD();
+
+	databufferid = audiobufferid = 0;
+	current_chunk = 0;
+	target_chunk = 4;		// Fill the entire buffer
+
+	sectors_read = 0;
+	last_sector_id = 0;
+	remaining_data_sectors = 0;
+	remaining_audio_sectors = 0;
 
 	CdSearchFile(&fp, archive.filename);
 	archive.startpos = CdPosToInt(&fp.pos);
@@ -73,6 +81,7 @@ void UnprepareCD() {
     // reset any callback that we replaced
 	CdControlF(CdlPause,0);
 	CdReadyCallback(NULL);
+	callback_running = 0;
 
 	param[0] = 0;
 	CdControlB(CdlSetmode, param, 0);

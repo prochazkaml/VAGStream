@@ -19,39 +19,10 @@
 #include "CDLib.h"
 #include "InputLib.h"
 
-int last_spu_irq_update;
-int current_spu_buffer;
-int transferred_chunks;
-int playback_ended;
-
 // TODO: Handle drive errors, buffer underruns, open drive trays!
-
-SpuTransferCallbackProc spu_ch2_callback() {
-	SpuSetTransferCallback(NULL);
-
-	SpuSetTransferStartAddr(current_spu_buffer ? 0x31010 : 0x21010);
-	SpuWrite(audiobuffer + (lastsentaudiobuffer << 16), 65536);
-
-	lastsentaudiobuffer++;
-	lastsentaudiobuffer &= 7;
-	current_spu_buffer ^= 1;
-	transferred_chunks++;
-}
 
 SpuIRQCallbackProc spu_callback() {
 	SpuSetIRQ(SPU_OFF);
-
-	if(last_sector_id == 0xFFFF && (transferred_chunks + 1) >= current_chunk) {
-		SpuSetKey(SPU_OFF, SPU_0CH | SPU_2CH);
-		playback_ended = 1;
-	} else {
-		SpuSetTransferStartAddr(current_spu_buffer ? 0x11010 : 0x1010);
-		SpuWrite(audiobuffer + (lastsentaudiobuffer << 16), 65536);
-
-		lastsentaudiobuffer++;
-
-		SpuSetTransferCallback((SpuTransferCallbackProc)spu_ch2_callback);
-	}
 }
 
 void run_test() {
@@ -62,25 +33,16 @@ void run_test() {
 
 	int playback_started = 0;
 
+	int spu_transfer_progress = 0;
+	int transferred_chunks = 0;
+	int playback_ended = 0;
+	int lastsentaudiobuffer = 4;
+
 	int checksum = 0;
 
 	POLY_F4 buffermeter;
 	
 	// Main program loop
-
-	last_spu_irq_update = 0;
-	current_spu_buffer = 0;
-	transferred_chunks = 0;
-	playback_ended = 0;
-	databufferid = audiobufferid = 0;
-	lastsentaudiobuffer = 4;
-	current_chunk = 0;
-	target_chunk = 4;
-	callback_running = 0;
-	sectors_read = 0;
-	last_sector_id = 0;
-	remaining_data_sectors = 0;
-	remaining_audio_sectors = 0;
 
 	PlayCD();
 
@@ -115,7 +77,7 @@ void run_test() {
 			target_chunk += 2;
 			ContinueCD();
 
-			SpuSetIRQAddr(0x31010);
+			SpuSetIRQAddr(0x31020);
 			SpuSetIRQCallback((SpuIRQCallbackProc)spu_callback);
 			SpuSetIRQ(SPU_ON);
 
@@ -130,17 +92,59 @@ void run_test() {
 			playback_started = 1;
 		}
 
-		if(last_spu_irq_update != current_spu_buffer && !playback_ended) {
-			last_spu_irq_update = current_spu_buffer;
+		if(playback_started && SpuGetIRQ() == SPU_OFF && spu_transfer_progress == 0) {
+			spu_transfer_progress = 1;
+		}
 
-			SpuSetIRQAddr(current_spu_buffer ? 0x21010 : 0x31010);
-			SpuSetIRQ(SPU_RESET);
+		switch(spu_transfer_progress) {
+			case 1:
+				if(!SpuIsTransferCompleted(SPU_TRANSFER_PEEK)) break;
 
-			if(last_sector_id != 0xFFFF) {
-				target_chunk++;
+				// Load left channel data to SPU memory
 
-				if(!callback_running) ContinueCD();
-			}
+				if(last_sector_id == 0xFFFF && (transferred_chunks + 1) >= current_chunk) {
+					playback_ended = 1;
+					break;
+				}
+
+				SpuSetTransferStartAddr((transferred_chunks & 1) ? 0x11010 : 0x1010);
+				SpuWrite(audiobuffer + (lastsentaudiobuffer << 16), 65536);
+
+				lastsentaudiobuffer++;
+				spu_transfer_progress++;
+
+				break;
+
+			case 2:
+				if(!SpuIsTransferCompleted(SPU_TRANSFER_PEEK)) break;
+
+				// Load right channel data to SPU memory
+
+				SpuSetTransferStartAddr((transferred_chunks & 1) ? 0x31010 : 0x21010);
+				SpuWrite(audiobuffer + (lastsentaudiobuffer << 16), 65536);
+
+				lastsentaudiobuffer++;
+				lastsentaudiobuffer &= 7;
+				transferred_chunks++;
+				spu_transfer_progress++;
+				break;
+
+			case 3:
+				if(!SpuIsTransferCompleted(SPU_TRANSFER_PEEK)) break;
+
+				// Load new chunk from disc, if necessary
+
+				if(last_sector_id != 0xFFFF) {
+					target_chunk++;
+
+					if(!callback_running) ContinueCD();
+				}
+
+				spu_transfer_progress = 0;
+				SpuSetIRQAddr((transferred_chunks & 1) ? 0x21020 : 0x31020);
+				SpuSetIRQ(SPU_RESET);
+
+				break;
 		}
 
 		padx = ParsePad(0, 0);
@@ -152,7 +156,6 @@ void run_test() {
 			StopCD();
 			SpuSetIRQ(SPU_OFF);
 			SpuSetIRQCallback(NULL);
-			SpuSetTransferCallback(NULL);
 			SpuIsTransferCompleted(SPU_TRANSFER_WAIT);
 			return;
 		}
@@ -217,7 +220,7 @@ void run_test() {
 		Font_ChangePosition(0, 240 - 64);
 		Font_PrintStringCentered(buffer);
 
-		sprintf(buffer, "%d I'm not dead", x++);
+		sprintf(buffer, "%d %d I'm not dead", spu_transfer_progress, x++);
 		Font_ChangePosition(0, 240 - 32);
 		Font_PrintStringCentered(buffer);
 
