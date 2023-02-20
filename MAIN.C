@@ -21,15 +21,6 @@
 
 // TODO: Handle drive errors, buffer underruns, open drive trays!
 
-SpuIRQCallbackProc spu_callback() {
-	SpuSetIRQ(SPU_OFF);
-}
-
-int spu_transfer_progress;
-int transferred_chunks;
-
-int checksum;
-
 POLY_F4 buffermeter;
 	
 void vsync_callback() {
@@ -102,125 +93,9 @@ void vsync_callback() {
 	Font_PrintStringCentered(buffer);
 }
 
-void run_test() {
-	int i, padx, exitflag = 0;
-
-	transferred_chunks = 0;
-	spu_transfer_progress = 0;
-	checksum = 0;
-
-	// Main program loop
-
-	PlayCD();
-
-	while(callback_running) VSync(0);
-
-	for(i = 0; i < 131072 * 4; i++) {
-		checksum += audiobuffer[i];
-	}
-
-	SpuSetKey(SPU_OFF, SPU_ALLCH);
-
-	SpuSetTransferStartAddr(0x1010);
-	SpuWrite(audiobuffer, 65536);
-	SpuIsTransferCompleted(SPU_TRANSFER_WAIT);
-
-	SpuSetTransferStartAddr(0x11010);
-	SpuWrite(audiobuffer + 65536 * 2, 65536);
-	SpuIsTransferCompleted(SPU_TRANSFER_WAIT);
-
-	SpuSetTransferStartAddr(0x21010);
-	SpuWrite(audiobuffer + 65536 * 1, 65536);
-	SpuIsTransferCompleted(SPU_TRANSFER_WAIT);
-
-	SpuSetTransferStartAddr(0x31010);
-	SpuWrite(audiobuffer + 65536 * 3, 65536);
-	SpuIsTransferCompleted(SPU_TRANSFER_WAIT);
-
-	transferred_chunks = 2;
-	target_chunk += 2;
-	ContinueCD();
-
-	SpuSetIRQAddr(0x31020);
-	SpuSetIRQCallback((SpuIRQCallbackProc)spu_callback);
-	SpuSetIRQ(SPU_ON);
-
-	SpuSetVoiceStartAddr(0, 0x1010);
-	SpuSetVoiceStartAddr(2, 0x21010);
-
-	SpuSetVoiceVolume(0, MAX_VOLUME, 0);
-	SpuSetVoiceVolume(2, 0, MAX_VOLUME);
-
-	SpuSetKey(SPU_ON, SPU_0CH | SPU_2CH);
-
-	do {
-		if(SpuGetIRQ() == SPU_OFF && spu_transfer_progress == 0) {
-			spu_transfer_progress = 1;
-		}
-
-		switch(spu_transfer_progress) {
-			case 1:
-				if(!SpuIsTransferCompleted(SPU_TRANSFER_PEEK)) break;
-
-				// Load left channel data to SPU memory
-
-				if(last_sector_id == 0xFFFF && transferred_chunks >= current_chunk) {
-					exitflag = 1;
-					break;
-				}
-
-				SpuSetTransferStartAddr((transferred_chunks & 1) ? 0x11010 : 0x1010);
-				SpuWrite(audiobuffer + ((transferred_chunks & 3) << 17), 65536);
-
-				spu_transfer_progress++;
-				break;
-
-			case 2:
-				if(!SpuIsTransferCompleted(SPU_TRANSFER_PEEK)) break;
-
-				// Load right channel data to SPU memory
-
-				SpuSetTransferStartAddr((transferred_chunks & 1) ? 0x31010 : 0x21010);
-				SpuWrite(audiobuffer + ((transferred_chunks & 3) << 17) + 65536, 65536);
-
-				transferred_chunks++;
-				spu_transfer_progress++;
-				break;
-
-			case 3:
-				if(!SpuIsTransferCompleted(SPU_TRANSFER_PEEK)) break;
-
-				// Load new chunk from disc, if necessary
-
-				if(last_sector_id != 0xFFFF) {
-					target_chunk++;
-
-					if(!callback_running) ContinueCD();
-				}
-
-				spu_transfer_progress = 0;
-				SpuSetIRQAddr((transferred_chunks & 1) ? 0x21020 : 0x31020);
-				SpuSetIRQ(SPU_RESET);
-
-				break;
-		}
-
-		padx = ParsePad(0, 0);
-
-		if(padx & PADRdown) exitflag = 1;
-
-		if(exitflag) {
-			SpuSetKey(SPU_OFF, SPU_0CH | SPU_2CH);
-			StopCD();
-			SpuSetIRQ(SPU_OFF);
-			SpuSetIRQCallback(NULL);
-			SpuIsTransferCompleted(SPU_TRANSFER_WAIT);
-			return;
-		}
-    } while(1);
-}
-
 int main() {
+	int padx;
+
 	// Initialize system
 
 	init();
@@ -234,5 +109,17 @@ int main() {
 
 	// Run the stream loop forever
 
-	while(1) run_test();
+	while(1) {
+		StartStream("\\TEST.PAK;1");
+
+		while(1) {
+			if(ProcessStream()) break;
+
+			padx = ParsePad(0, 0);
+
+			if(padx & PADRdown) break;
+		}
+		
+		StopStream();
+	}
 }

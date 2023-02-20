@@ -1,10 +1,3 @@
-typedef struct {
-	char *filename; 
-	int startpos;
-} CDFILE;
-
-CDFILE archive = { "\\TEST.PAK;1", 0 };
-
 unsigned char databuffer[16384]; // Should be plenty
 unsigned char databufferid;
 
@@ -13,18 +6,31 @@ unsigned char audiobufferid;
 
 int current_chunk, target_chunk;
 int callback_running, sectors_read, last_sector_id, remaining_data_sectors, remaining_audio_sectors;
+int filepos;
 
-void PrepareCD();
+int spu_transfer_progress;
+int transferred_chunks;
+
+int checksum;
+
 void cbready(int intr, u_char *result);
+int StartStream(char *filename);
+int ProcessStream();
+void StopStream();
 void UnprepareCD();
-void PlayCD();
-void StopCD();
+void ContinueCD();
 
-void PlayCD() {
+SpuIRQCallbackProc spu_callback() {
+	SpuSetIRQ(SPU_OFF);
+}
+
+int StartStream(char *filename) {
 	CdlFILE fp;
 	CdlLOC loc;
+	int i;
+	u_char param[4] = { CdlModeSpeed };
 
-	StopCD();
+	UnprepareCD();
 
 	databufferid = audiobufferid = 0;
 	current_chunk = 0;
@@ -35,44 +41,160 @@ void PlayCD() {
 	remaining_data_sectors = 0;
 	remaining_audio_sectors = 0;
 
-	CdSearchFile(&fp, archive.filename);
-	archive.startpos = CdPosToInt(&fp.pos);
+	transferred_chunks = 0;
+	spu_transfer_progress = 0;
+	checksum = 0;
 
-	PrepareCD();
+	// Search for the requested file
 
-	// starting position on the CD
-	CdIntToPos(archive.startpos, &loc);
+	if(CdSearchFile(&fp, filename) == NULL) return 1;
+	filepos = CdPosToInt(&fp.pos);
 
-	// begin playing
+	// Initialize the CD subsystem to run at 2X speed
+
+	CdControlB(CdlSetmode, param, 0);
+	CdControlF(CdlPause, 0);
+
+	// Start the CD callback
+
+	callback_running = 1;
+	CdReadyCallback((CdlCB)cbready);
+
+	// Set the file starting position on the CD
+
+	CdIntToPos(filepos, &loc);
+
+	// Fill the initial buffer
+
 	CdControlF(CdlReadN, (u_char *)&loc);
+
+	while(callback_running) VSync(0);
+
+	// Calculate the checksum (optional)
+
+	for(i = 0; i < 131072 * 4; i++) {
+		checksum += audiobuffer[i];
+	}
+
+	// Transfer the initial buffer to the SPU
+
+	SpuSetKey(SPU_OFF, SPU_ALLCH);
+
+	SpuSetTransferStartAddr(0x1010);
+	SpuWrite(audiobuffer, 65536);
+	SpuIsTransferCompleted(SPU_TRANSFER_WAIT);
+
+	SpuSetTransferStartAddr(0x11010);
+	SpuWrite(audiobuffer + 65536 * 2, 65536);
+	SpuIsTransferCompleted(SPU_TRANSFER_WAIT);
+
+	SpuSetTransferStartAddr(0x21010);
+	SpuWrite(audiobuffer + 65536 * 1, 65536);
+	SpuIsTransferCompleted(SPU_TRANSFER_WAIT);
+
+	SpuSetTransferStartAddr(0x31010);
+	SpuWrite(audiobuffer + 65536 * 3, 65536);
+	SpuIsTransferCompleted(SPU_TRANSFER_WAIT);
+
+	transferred_chunks = 2;
+
+	// Already replace the transferred buffers
+
+	target_chunk += 2;
+	ContinueCD();
+
+	// Set SPU IRQ to detect when to feed the SPU's RAM more data
+
+	SpuSetIRQAddr(0x31020);
+	SpuSetIRQCallback((SpuIRQCallbackProc)spu_callback);
+	SpuSetIRQ(SPU_ON);
+
+	// Start the SPU stream on channels 0 (left) and 1 (right)
+
+	SpuSetVoiceStartAddr(0, 0x1010);
+	SpuSetVoiceStartAddr(1, 0x21010);
+
+	SpuSetVoiceVolume(0, MAX_VOLUME, 0);
+	SpuSetVoiceVolume(1, 0, MAX_VOLUME);
+
+	SpuSetKey(SPU_ON, SPU_0CH | SPU_1CH);
+
+	return 0;
+}
+
+int ProcessStream() {
+	if(SpuGetIRQ() == SPU_OFF && spu_transfer_progress == 0) {
+		spu_transfer_progress = 1;
+	}
+
+	switch(spu_transfer_progress) {
+		case 1:
+			if(!SpuIsTransferCompleted(SPU_TRANSFER_PEEK)) break;
+
+			// Load left channel data to SPU memory
+
+			if(last_sector_id == 0xFFFF && transferred_chunks >= current_chunk) {
+				return 1;
+				break;
+			}
+
+			SpuSetTransferStartAddr((transferred_chunks & 1) ? 0x11010 : 0x1010);
+			SpuWrite(audiobuffer + ((transferred_chunks & 3) << 17), 65536);
+
+			spu_transfer_progress++;
+			break;
+
+		case 2:
+			if(!SpuIsTransferCompleted(SPU_TRANSFER_PEEK)) break;
+
+			// Load right channel data to SPU memory
+
+			SpuSetTransferStartAddr((transferred_chunks & 1) ? 0x31010 : 0x21010);
+			SpuWrite(audiobuffer + ((transferred_chunks & 3) << 17) + 65536, 65536);
+
+			transferred_chunks++;
+			spu_transfer_progress++;
+			break;
+
+		case 3:
+			if(!SpuIsTransferCompleted(SPU_TRANSFER_PEEK)) break;
+
+			// Load new chunk from disc, if necessary
+
+			if(last_sector_id != 0xFFFF) {
+				target_chunk++;
+
+				if(!callback_running) ContinueCD();
+			}
+
+			spu_transfer_progress = 0;
+			SpuSetIRQAddr((transferred_chunks & 1) ? 0x21020 : 0x31020);
+			SpuSetIRQ(SPU_RESET);
+
+			break;
+	}
+
+	return 0;
+}
+
+void StopStream() {
+	SpuSetKey(SPU_OFF, SPU_0CH | SPU_1CH);
+	UnprepareCD();
+	SpuSetIRQ(SPU_OFF);
+	SpuSetIRQCallback(NULL);
+	SpuIsTransferCompleted(SPU_TRANSFER_WAIT);
 }
 
 void ContinueCD() {
 	CdlLOC loc;
 
 	// starting position on the CD
-	CdIntToPos(archive.startpos, &loc);
+	CdIntToPos(filepos, &loc);
 
 	// begin playing
 	CdControlF(CdlReadN, (u_char *)&loc);
 
 	callback_running = 1;
-}
-
-void StopCD() {
-	UnprepareCD();
-}
-
-void PrepareCD() {
-	u_char param[4];
-
-	param[0] = CdlModeSpeed; // 2X speed
-
-	CdControlB(CdlSetmode, param, 0);
-	CdControlF(CdlPause,0);
-
-	callback_running = 1;
-	CdReadyCallback((CdlCB)cbready);
 }
 
 void UnprepareCD() {
@@ -127,7 +249,7 @@ void cbready(int intr, u_char *result) {
 					remaining_data_sectors = len = (*(unsigned short *)(buffer + 2)) >> 11;
 					remaining_audio_sectors = 131072 >> 11;
 
-					archive.startpos += 1 + remaining_data_sectors + remaining_audio_sectors;
+					filepos += 1 + remaining_data_sectors + remaining_audio_sectors;
 
 					current_chunk++;
 				}
