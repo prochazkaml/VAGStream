@@ -25,29 +25,107 @@ SpuIRQCallbackProc spu_callback() {
 	SpuSetIRQ(SPU_OFF);
 }
 
+int playback_started = 0;
+
+int spu_transfer_progress = 0;
+int transferred_chunks = 0;
+int playback_ended = 0;
+int lastsentaudiobuffer = 4;
+
+int checksum = 0;
+
+POLY_F4 buffermeter;
+	
+void vsync_callback() {
+	char buffer[64];
+	int i;
+	static int x = 0;
+
+	Display();
+
+	Font_ChangeColor(255, 255, 255);
+
+	Font_ChangePosition(0, -240);
+	Font_PrintStringCentered("VAG Stream test");
+
+	sprintf(buffer, "%d total sectors read", sectors_read);
+	Font_ChangePosition(0, -240 + 64);
+	Font_PrintStringCentered(buffer);
+
+	sprintf(buffer, "Latest loaded chunk ID: %d", last_sector_id);
+	Font_ChangePosition(0, -240 + 96);
+	Font_PrintStringCentered(buffer);
+
+	sprintf(buffer, "%d data sectors to be loaded", remaining_data_sectors);
+	Font_ChangePosition(0, -240 + 128);
+	Font_PrintStringCentered(buffer);
+
+	sprintf(buffer, "%d audio sectors to be loaded", remaining_audio_sectors);
+	Font_ChangePosition(0, -240 + 160);
+	Font_PrintStringCentered(buffer);
+
+	sprintf(buffer, "SPU IRQ addr 0x%X", SpuGetIRQAddr());
+	Font_ChangePosition(0, -240 + 192);
+	Font_PrintStringCentered(buffer);
+
+	sprintf(buffer, "%d target chunk", target_chunk);
+	Font_ChangePosition(-160, -240 + 224);
+	Font_PrintStringCentered(buffer);
+
+	sprintf(buffer, "%d chunks read", current_chunk);
+	Font_ChangePosition(160, -240 + 224);
+	Font_PrintStringCentered(buffer);
+
+	sprintf(buffer, "%d chunks processed", transferred_chunks);
+	Font_ChangePosition(0, -240 + 256);
+	Font_PrintStringCentered(buffer);
+
+	sprintf(buffer, "%d chunks processed", transferred_chunks);
+	Font_ChangePosition(0, -240 + 256);
+	Font_PrintStringCentered(buffer);
+
+	i = 320 * ((current_chunk - transferred_chunks) * 64 - remaining_audio_sectors) / 256;
+
+	setXY4(&buffermeter, 0, 240 - 160, i, 240 - 160, 0, 240 - 128, i, 240 - 128);
+	GsSortPoly(&buffermeter, &myOT[myActiveBuff], OT_ENTRIES-1);
+
+	sprintf(buffer, "Buffer %d %% full", i * 100 / 320);
+	Font_ChangePosition(-320, 240 - 160);
+	Font_PrintString(buffer);
+
+	sprintf(buffer, "Drive status 0x%X", CdStatus());
+	Font_ChangePosition(0, 240 - 96);
+	Font_PrintStringCentered(buffer);
+
+	sprintf(buffer, "Initial checksum %d", checksum);
+	Font_ChangePosition(0, 240 - 64);
+	Font_PrintStringCentered(buffer);
+
+	sprintf(buffer, "%d %d I'm not dead", spu_transfer_progress, x++);
+	Font_ChangePosition(0, 240 - 32);
+	Font_PrintStringCentered(buffer);
+}
+
 void run_test() {
 	int i, x = 0, y;
 
 	int padx;
 	char buffer[64];
 
-	int playback_started = 0;
+	playback_started = playback_ended = 0;
+	transferred_chunks = 0;
+	lastsentaudiobuffer = 4;
+	spu_transfer_progress = 0;
+	checksum = 0;
 
-	int spu_transfer_progress = 0;
-	int transferred_chunks = 0;
-	int playback_ended = 0;
-	int lastsentaudiobuffer = 4;
-
-	int checksum = 0;
-
-	POLY_F4 buffermeter;
-	
 	// Main program loop
 
 	PlayCD();
 
 	SetPolyF4(&buffermeter);
 	setRGB0(&buffermeter, 255, 255, 255);
+
+	VSyncCallback(vsync_callback);
 
 	do {
 		if(!callback_running && !playback_started) {
@@ -157,74 +235,9 @@ void run_test() {
 			SpuSetIRQ(SPU_OFF);
 			SpuSetIRQCallback(NULL);
 			SpuIsTransferCompleted(SPU_TRANSFER_WAIT);
+			VSyncCallback(NULL);
 			return;
 		}
-
-		PrepDisplay();
-
-		Font_ChangeColor(255, 255, 255);
-
-		Font_ChangePosition(0, -240);
-		Font_PrintStringCentered("VAG Stream test");
-
-		sprintf(buffer, "%d total sectors read", sectors_read);
-		Font_ChangePosition(0, -240 + 64);
-		Font_PrintStringCentered(buffer);
-
-		sprintf(buffer, "Latest loaded chunk ID: %d", last_sector_id);
-		Font_ChangePosition(0, -240 + 96);
-		Font_PrintStringCentered(buffer);
-
-		sprintf(buffer, "%d data sectors to be loaded", remaining_data_sectors);
-		Font_ChangePosition(0, -240 + 128);
-		Font_PrintStringCentered(buffer);
-
-		sprintf(buffer, "%d audio sectors to be loaded", remaining_audio_sectors);
-		Font_ChangePosition(0, -240 + 160);
-		Font_PrintStringCentered(buffer);
-
-		sprintf(buffer, "SPU IRQ addr 0x%X", SpuGetIRQAddr());
-		Font_ChangePosition(0, -240 + 192);
-		Font_PrintStringCentered(buffer);
-
-		sprintf(buffer, "%d target chunk", target_chunk);
-		Font_ChangePosition(-160, -240 + 224);
-		Font_PrintStringCentered(buffer);
-
-		sprintf(buffer, "%d chunks read", current_chunk);
-		Font_ChangePosition(160, -240 + 224);
-		Font_PrintStringCentered(buffer);
-
-		sprintf(buffer, "%d chunks processed", transferred_chunks);
-		Font_ChangePosition(0, -240 + 256);
-		Font_PrintStringCentered(buffer);
-
-		sprintf(buffer, "%d chunks processed", transferred_chunks);
-		Font_ChangePosition(0, -240 + 256);
-		Font_PrintStringCentered(buffer);
-
-		i = 320 * ((current_chunk - transferred_chunks) * 64 - remaining_audio_sectors) / 256;
-
-		setXY4(&buffermeter, 0, 240 - 160, i, 240 - 160, 0, 240 - 128, i, 240 - 128);
-		GsSortPoly(&buffermeter, &myOT[myActiveBuff], OT_ENTRIES-1);
-
-		sprintf(buffer, "Buffer %d %% full", i * 100 / 320);
-		Font_ChangePosition(-320, 240 - 160);
-		Font_PrintString(buffer);
-
-		sprintf(buffer, "Drive status 0x%X", CdStatus());
-		Font_ChangePosition(0, 240 - 96);
-		Font_PrintStringCentered(buffer);
-
-		sprintf(buffer, "Initial checksum %d", checksum);
-		Font_ChangePosition(0, 240 - 64);
-		Font_PrintStringCentered(buffer);
-
-		sprintf(buffer, "%d %d I'm not dead", spu_transfer_progress, x++);
-		Font_ChangePosition(0, 240 - 32);
-		Font_PrintStringCentered(buffer);
-
-		Display();
     } while(1);
 }
 

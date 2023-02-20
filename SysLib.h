@@ -104,20 +104,17 @@ void init() {
 	CdInit();
 }
 
-void PrepDisplay() {
+void Display() {
+	// Switch buffers, draw the old frame
+	GsSwapDispBuff();
+	GsSortClear(0, 0, 0, &myOT[myActiveBuff]);
+	GsDrawOt(&myOT[myActiveBuff]);	
+
+	// Reset font position
+	Font_ResetPos();
+
 	// Get active buffer ID and clear the OT to be processed for the next frame
 	myActiveBuff = GsGetActiveBuff();
 	GsSetWorkBase((PACKET*)myPacketArea[myActiveBuff]);
 	GsClearOt(0, 0, &myOT[myActiveBuff]);
-}
-
-void Display() {
-	// Reset font position
-	Font_ResetPos();
-
-	// Wait for VSync, switch buffers, and draw the new frame.
-	VSync(0);
-	GsSwapDispBuff();
-	GsSortClear(0, 0, 0, &myOT[myActiveBuff]);
-	GsDrawOt(&myOT[myActiveBuff]);	
 }
