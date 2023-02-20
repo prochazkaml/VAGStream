@@ -25,14 +25,12 @@ SpuIRQCallbackProc spu_callback() {
 	SpuSetIRQ(SPU_OFF);
 }
 
-int playback_started = 0;
+int playback_status; // 0 = not started, 1 = running, 2 = ended
 
-int spu_transfer_progress = 0;
-int transferred_chunks = 0;
-int playback_ended = 0;
-int lastsentaudiobuffer = 4;
+int spu_transfer_progress;
+int transferred_chunks;
 
-int checksum = 0;
+int checksum;
 
 POLY_F4 buffermeter;
 	
@@ -112,9 +110,8 @@ void run_test() {
 	int padx;
 	char buffer[64];
 
-	playback_started = playback_ended = 0;
+	playback_status = 0;
 	transferred_chunks = 0;
-	lastsentaudiobuffer = 4;
 	spu_transfer_progress = 0;
 	checksum = 0;
 
@@ -128,7 +125,7 @@ void run_test() {
 	VSyncCallback(vsync_callback);
 
 	do {
-		if(!callback_running && !playback_started) {
+		if(!callback_running && !playback_status) {
 			for(i = 0; i < 131072 * 4; i++) {
 				checksum += audiobuffer[i];
 			}
@@ -167,10 +164,10 @@ void run_test() {
 
 			SpuSetKey(SPU_ON, SPU_0CH | SPU_2CH);
 
-			playback_started = 1;
+			playback_status = 1;
 		}
 
-		if(playback_started && SpuGetIRQ() == SPU_OFF && spu_transfer_progress == 0) {
+		if(playback_status && SpuGetIRQ() == SPU_OFF && spu_transfer_progress == 0) {
 			spu_transfer_progress = 1;
 		}
 
@@ -181,16 +178,14 @@ void run_test() {
 				// Load left channel data to SPU memory
 
 				if(last_sector_id == 0xFFFF && transferred_chunks >= current_chunk) {
-					playback_ended = 1;
+					playback_status = 2;
 					break;
 				}
 
 				SpuSetTransferStartAddr((transferred_chunks & 1) ? 0x11010 : 0x1010);
-				SpuWrite(audiobuffer + (lastsentaudiobuffer << 16), 65536);
+				SpuWrite(audiobuffer + ((transferred_chunks & 3) << 17), 65536);
 
-				lastsentaudiobuffer++;
 				spu_transfer_progress++;
-
 				break;
 
 			case 2:
@@ -199,10 +194,8 @@ void run_test() {
 				// Load right channel data to SPU memory
 
 				SpuSetTransferStartAddr((transferred_chunks & 1) ? 0x31010 : 0x21010);
-				SpuWrite(audiobuffer + (lastsentaudiobuffer << 16), 65536);
+				SpuWrite(audiobuffer + ((transferred_chunks & 3) << 17) + 65536, 65536);
 
-				lastsentaudiobuffer++;
-				lastsentaudiobuffer &= 7;
 				transferred_chunks++;
 				spu_transfer_progress++;
 				break;
@@ -227,9 +220,9 @@ void run_test() {
 
 		padx = ParsePad(0, 0);
 
-		if(padx & PADRdown) playback_ended = 1;
+		if(padx & PADRdown) playback_status = 2;
 
-		if(playback_ended) {
+		if(playback_status == 2) {
 			SpuSetKey(SPU_OFF, SPU_0CH | SPU_2CH);
 			StopCD();
 			SpuSetIRQ(SPU_OFF);
