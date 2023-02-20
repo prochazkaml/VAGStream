@@ -16,7 +16,7 @@
 #include "FontLib.h"
 #include "SysLib.h"
 #include "3DLib.h"
-#include "CDLib.h"
+#include "StreamLib.h"
 #include "InputLib.h"
 
 // TODO: Handle drive errors, buffer underruns, open drive trays!
