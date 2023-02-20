@@ -105,10 +105,7 @@ void vsync_callback() {
 }
 
 void run_test() {
-	int i, x = 0, y;
-
-	int padx;
-	char buffer[64];
+	int i, padx;
 
 	playback_status = 0;
 	transferred_chunks = 0;
@@ -118,11 +115,6 @@ void run_test() {
 	// Main program loop
 
 	PlayCD();
-
-	SetPolyF4(&buffermeter);
-	setRGB0(&buffermeter, 255, 255, 255);
-
-	VSyncCallback(vsync_callback);
 
 	do {
 		if(!callback_running && !playback_status) {
@@ -228,7 +220,6 @@ void run_test() {
 			SpuSetIRQ(SPU_OFF);
 			SpuSetIRQCallback(NULL);
 			SpuIsTransferCompleted(SPU_TRANSFER_WAIT);
-			VSyncCallback(NULL);
 			return;
 		}
     } while(1);
@@ -238,6 +229,15 @@ int main() {
 	// Initialize system
 
 	init();
+
+	// Start the main display thread
+
+	SetPolyF4(&buffermeter);
+	setRGB0(&buffermeter, 255, 255, 255);
+
+	VSyncCallback(vsync_callback);
+
+	// Run the stream loop forever
 
 	while(1) run_test();
 }
