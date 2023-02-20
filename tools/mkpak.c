@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 
 void patch_loop(uint8_t *data, int chunktype) {
 	int i;
@@ -19,19 +20,6 @@ int main(int argc, char *argv[]) {
 	FILE *right = fopen(argv[2], "rb");
 	FILE *out = fopen(argv[3], "wb");
 
-	fseek(left, 0, SEEK_END);
-	int size = ftell(left);
-	fseek(left, 0, SEEK_SET);
-
-	fseek(right, 0, SEEK_END);
-	int rsize = ftell(right);
-	fseek(right, 0, SEEK_SET);
-
-	if(size != rsize) {
-		printf("ERROR: Channel data size mismatch!");
-		exit(1);
-	}
-
 	int chunks = 0;
 
 	uint8_t *chunkhdr = malloc(2048);
@@ -42,22 +30,25 @@ int main(int argc, char *argv[]) {
 
 	int chunktype = 0;
 
-	while(size > 0) {
+	int lsize = 1, rsize = 1;
+
+	while(lsize == 1 && rsize == 1) {
 		chunkhdr[0] = chunks;
 		chunkhdr[1] = chunks >> 8;
 
 		fwrite(chunkhdr, 2048, 1, out);
 
-		fread(chunkdata, 65536, 1, left);
+		memset(chunkdata, 0, 65536);
+		lsize = fread(chunkdata, 65536, 1, left);
 		patch_loop(chunkdata, chunktype);
 		fwrite(chunkdata, 65536, 1, out);
 
-		fread(chunkdata, 65536, 1, right);
+		memset(chunkdata, 0, 65536);
+		rsize = fread(chunkdata, 65536, 1, right);
 		patch_loop(chunkdata, chunktype);
 		fwrite(chunkdata, 65536, 1, out);
 
 		chunks++;
-		size -= 65536;
 		chunktype ^= 1;
 	}
 
