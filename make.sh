@@ -1,6 +1,6 @@
 ./buildassets.sh
 
-export WINEPREFIX=$HOME/.wine/32bit
+export WINEPREFIX=$HOME/.psyq
 
 wineconsole tools/make32.bat
 
