@@ -1,4 +1,5 @@
 #include <sys/types.h>
+#include <KERNEL.h>
 #include <LIBETC.H>
 #include <LIBGTE.H>
 #include <LIBGPU.H>
@@ -15,7 +16,7 @@
 #include "Common.h"
 #include "FontLib.h"
 #include "SysLib.h"
-#include "3DLib.h"
+//#include "3DLib.h"
 #include "StreamLib.h"
 #include "InputLib.h"
 
@@ -29,6 +30,8 @@ void vsync_callback() {
 	static int x = 0;
 
 	Display();
+
+	// Start rendering
 
 	Font_ChangeColor(255, 255, 255);
 
@@ -110,7 +113,9 @@ int main() {
 	// Run the stream loop forever
 
 	while(1) {
-		StartStream("\\TEST.PAK;1");
+		if(StartStream("\\TEST.PAK;1")) {
+			while(1) VSync(0);
+		}
 
 		while(1) {
 			if(ProcessStream()) break;

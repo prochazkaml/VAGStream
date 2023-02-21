@@ -31,13 +31,15 @@ void init() {
 	ResetCallback();
 	
 	// Initialize the GS
+	
 	SetVideoMode(MODE_PAL);
 	ResetGraph(0);
 	
-	GsInitGraph(SCREEN_XRES, SCREEN_YRES, GsOFSGPU|GsINTER, DITHER, 0);	
+	GsInitGraph(SCREEN_XRES, SCREEN_YRES, GsOFSGPU, DITHER, 0);	
 	GsDefDispBuff(0, 0, 0, 0);
 	
 	// Prepare the ordering tables
+
 	myOT[0].length	=OT_LENGTH;
 	myOT[1].length	=OT_LENGTH;
 	myOT[0].org		=myOT_TAG[0];
@@ -47,19 +49,24 @@ void init() {
 	GsClearOt(0, 0, &myOT[1]);
 	
 	// Setup 3D and projection matrix
+
 	GsInit3D();
 	GsSetProjection(CENTERX);
 	
 	// Initialize coordinates for the camera (it will be used as a base for future matrix calculations)
+
 	GsInitCoordinate2(WORLD, &Camera.coord2);
 
-	// Set ambient color (for lighting)
+	// Set the ambient color (for lighting)
+
 	GsSetAmbient(ONE/4, ONE/4, ONE/4);
 	
-	// Set default lighting mode
+	// Set the default lighting mode
+
 	GsSetLightMode(0);
 	
 	// Set the light source coordinates
+
 	pslt.vx = 0;
 	pslt.vy = 0;
 	pslt.vz = 1000;
@@ -67,12 +74,15 @@ void init() {
 	pslt.r = 0xff; pslt.g = 0xff; pslt.b = 0xff;
 	
 	// Load the textures
+
 	LoadTexture((u_long*)assets_FONT_TIM);
 
-	// Initialize controller
+	// Initialize the controller
+	
 	PadInit(0);
 
 	// Init SPU
+
 	SpuInit();
 
 	c_attr.mask = (SPU_COMMON_MVOLL | SPU_COMMON_MVOLR);
@@ -106,14 +116,17 @@ void init() {
 
 void Display() {
 	// Switch buffers, draw the old frame
+
 	GsSwapDispBuff();
 	GsSortClear(0, 0, 0, &myOT[myActiveBuff]);
 	GsDrawOt(&myOT[myActiveBuff]);	
 
 	// Reset font position
+
 	Font_ResetPos();
 
 	// Get active buffer ID and clear the OT to be processed for the next frame
+
 	myActiveBuff = GsGetActiveBuff();
 	GsSetWorkBase((PACKET*)myPacketArea[myActiveBuff]);
 	GsClearOt(0, 0, &myOT[myActiveBuff]);
