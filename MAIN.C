@@ -17,21 +17,21 @@
 #include "FontLib.h"
 #include "SysLib.h"
 //#include "3DLib.h"
+#include "ThreadLib.h"
 #include "StreamLib.h"
 #include "InputLib.h"
 
 // TODO: Handle drive errors, buffer underruns, open drive trays!
 
 POLY_F4 buffermeter;
+int control = 0;
 	
-void vsync_callback() {
+void debug_screen() {
 	char buffer[64];
-	int i;
+	int i, padx;
 	static int x = 0;
 
 	Display();
-
-	// Start rendering
 
 	Font_ChangeColor(255, 255, 255);
 
@@ -91,9 +91,41 @@ void vsync_callback() {
 	Font_ChangePosition(0, 240 - 64);
 	Font_PrintStringCentered(buffer);
 
-	sprintf(buffer, "%d %d I'm not dead", spu_transfer_progress, x++);
+	sprintf(buffer, "%d %d %d I'm not dead", control, spu_transfer_progress, x++);
 	Font_ChangePosition(0, 240 - 32);
 	Font_PrintStringCentered(buffer);
+}
+
+void error_screen() {
+	char buffer[64];
+	static int x = 0;
+
+	Display();
+
+	Font_ChangeColor(255, 255, 255);
+
+	Font_ChangePosition(0, -16);
+	Font_PrintStringCentered("Error loading file!");
+
+	sprintf(buffer, "%d I'm not dead", x++);
+	Font_ChangePosition(0, 240 - 32);
+	Font_PrintStringCentered(buffer);
+}
+
+void subthread() {
+	if(StartStream("\\TEST.PAK;1")) {
+		while(1);
+	}
+
+	while(control == 0) {
+		if(ProcessStream()) break;
+	}
+		
+	StopStream();
+
+	control = 2;
+
+	while(1);
 }
 
 int main() {
@@ -103,28 +135,28 @@ int main() {
 
 	init();
 
-	// Start the main display thread
-
 	SetPolyF4(&buffermeter);
 	setRGB0(&buffermeter, 255, 255, 255);
 
-	VSyncCallback(vsync_callback);
-
-	// Run the stream loop forever
-
 	while(1) {
-		if(StartStream("\\TEST.PAK;1")) {
-			while(1) VSync(0);
-		}
+		InitSubThread(subthread);
 
-		while(1) {
-			if(ProcessStream()) break;
+		VSyncCallback(ReturnToMainThread);
+
+		control = 0;
+
+		while(control < 2) {
+			debug_screen();
 
 			padx = ParsePad(0, 0);
 
-			if(padx & PADRdown) break;
+			if(padx & PADRdown) control = 1;
+
+			RunSubThread();
 		}
-		
-		StopStream();
+
+		VSyncCallback(NULL);
+
+		StopSubThread();
 	}
 }
