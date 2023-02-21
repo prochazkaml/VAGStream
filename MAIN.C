@@ -31,7 +31,7 @@ void debug_screen() {
 	int i, padx;
 	static int x = 0;
 
-	Display();
+	PrepDisplay();
 
 	Font_ChangeColor(255, 255, 255);
 
@@ -94,6 +94,8 @@ void debug_screen() {
 	sprintf(buffer, "%d %d %d I'm not dead", control, spu_transfer_progress, x++);
 	Font_ChangePosition(0, 240 - 32);
 	Font_PrintStringCentered(buffer);
+
+	Display();
 }
 
 void error_screen() {

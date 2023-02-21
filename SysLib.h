@@ -29,7 +29,7 @@ void init() {
 	SVECTOR VScale={0};
 
 	ResetCallback();
-	
+
 	// Initialize the GS
 	
 	SetVideoMode(MODE_PAL);
@@ -114,13 +114,7 @@ void init() {
 	CdInit();
 }
 
-void Display() {
-	// Switch buffers, draw the old frame
-
-	GsSwapDispBuff();
-	GsSortClear(0, 0, 0, &myOT[myActiveBuff]);
-	GsDrawOt(&myOT[myActiveBuff]);	
-
+void PrepDisplay() {
 	// Reset font position
 
 	Font_ResetPos();
@@ -130,4 +124,12 @@ void Display() {
 	myActiveBuff = GsGetActiveBuff();
 	GsSetWorkBase((PACKET*)myPacketArea[myActiveBuff]);
 	GsClearOt(0, 0, &myOT[myActiveBuff]);
+}
+
+void Display() {
+	// Switch buffers, draw the old frame
+
+	GsSwapDispBuff();
+	GsSortClear(0, 0, 0, &myOT[myActiveBuff]);
+	GsDrawOt(&myOT[myActiveBuff]);	
 }
