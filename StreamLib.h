@@ -211,8 +211,15 @@ void UnprepareCD() {
 
 void cbready(int intr, u_char *result) {
 	unsigned short id, len;
-
 	void *buffer;
+
+	if(last_sector_id == 0xFFFF) {
+		// If the program tries to do anything stupid, stop it immediately
+
+		CdControlF(CdlPause, 0);
+		callback_running = 0;
+		return;
+	}
 
 	if (intr == CdlDataReady) {
 		if(remaining_data_sectors) {
