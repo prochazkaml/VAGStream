@@ -2,3 +2,4 @@
 *.bin
 *.cue
 Assets.h
+Assets.c
