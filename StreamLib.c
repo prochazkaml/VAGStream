@@ -145,7 +145,7 @@ int ProcessStream() {
 
 		// Load left channel data to SPU memory
 
-		if(last_sector_id == 0xFFFF && transferred_chunks >= current_chunk) {
+		if(last_sector_id == 0xFFFF && (transferred_chunks - 1) >= current_chunk) {
 			return 1;
 		}
 
