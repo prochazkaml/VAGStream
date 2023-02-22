@@ -2,6 +2,7 @@
 #include "Assets.h"
 
 #define PACKETMAX	2048
+#define GPU_GP1 (*((volatile unsigned long *) (0xBF801814))) // thanks, PSn00bSDK
 
 GsOT OT[2]; // OT handlers
 GsOT_TAG OT_TAG[2][OT_ENTRIES]; // OT tables
@@ -10,6 +11,8 @@ int ActiveBuff = 0; // Active buffer
 
 unsigned long __ramsize =   0x002000000; // force 2 megabytes of RAM
 unsigned long __stacksize = 0x00004000; // force 16 kilobytes of stack
+
+unsigned long gpu_status = 0;
 
 void LoadTexture(u_long *addr) {
 	// A simple TIM loader... Not much to explain
@@ -107,6 +110,12 @@ void init() {
 }
 
 void PrepDisplay() {
+	// Wait for the GPU to start rendering a new field
+
+	while (!((GPU_GP1 ^ gpu_status) & (1 << 31)));
+
+	gpu_status = GPU_GP1;
+
 	// Reset font position
 
 	Font_ResetPos();

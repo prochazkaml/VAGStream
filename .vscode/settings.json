@@ -8,6 +8,8 @@
 		"syslib.h": "c",
 		"3dlib.h": "c",
 		"LIBGS.H": "cpp",
-		"LIBGTE.H": "cpp"
+		"LIBGTE.H": "cpp",
+		"LIBSPU.H": "cpp",
+		"VSYNC.C": "cpp"
 	},
 }
