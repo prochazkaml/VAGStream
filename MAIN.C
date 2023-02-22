@@ -35,23 +35,6 @@ void debug_screen() {
 	Display();
 }
 
-void error_screen() {
-	char buffer[64];
-
-	PrepDisplay();
-
-	Font_ChangeColor(255, 255, 255);
-
-	Font_ChangePosition(0, -16);
-	Font_PrintStringCentered("Error loading file!");
-
-	sprintf(buffer, "%d I'm not dead", VSync(-1));
-	Font_ChangePosition(0, 240 - 32);
-	Font_PrintStringCentered(buffer);
-
-	Display();
-}
-
 void subthread() {
 	if(StartStream("\\TEST.PAK;1")) {
 		control = -1;
@@ -86,10 +69,7 @@ int main() {
 		control = 0;
 
 		while(control < 2) {
-			if(control >= 0)
-				debug_screen();
-			else
-				error_screen();
+			debug_screen();
 
 			padx = ParsePad(0, 0);
 
