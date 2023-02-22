@@ -25,6 +25,20 @@ Then, just run:
 ```
 
 ## How to create a custom PAK file
+
+### The easy route
+
+Run:
+
+```
+./tools/mkpak.sh path_to_audio.mp3
+./make.sh
+```
+
+And you're done!
+
+### The manual route
+
 First, convert your audio file to WAV and split the channels. This can be done with `ffmpeg`:
 
 ```
@@ -46,4 +60,4 @@ cc tools/mkpak.c -o tools/mkpak
 ./tools/mkpak left.vag right.vag root/TEST.PAK
 ```
 
-Compile, and you're done!
+Compile with `make.sh` and you're done!

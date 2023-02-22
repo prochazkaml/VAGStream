@@ -1,3 +1,5 @@
+#!/bin/sh
+
 # Generate data
 
 rm -f Assets.c
