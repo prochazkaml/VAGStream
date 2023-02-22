@@ -29,7 +29,6 @@ int control = 0;
 void debug_screen() {
 	char buffer[64];
 	int i, padx;
-	static int x = 0;
 
 	PrepDisplay();
 
@@ -91,7 +90,7 @@ void debug_screen() {
 	Font_ChangePosition(0, 240 - 64);
 	Font_PrintStringCentered(buffer);
 
-	sprintf(buffer, "%d %d I'm not dead", control, x++);
+	sprintf(buffer, "%d %d I'm not dead", control, VSync(-1));
 	Font_ChangePosition(0, 240 - 32);
 	Font_PrintStringCentered(buffer);
 
@@ -100,7 +99,6 @@ void debug_screen() {
 
 void error_screen() {
 	char buffer[64];
-	static int x = 0;
 
 	PrepDisplay();
 
@@ -109,7 +107,7 @@ void error_screen() {
 	Font_ChangePosition(0, -16);
 	Font_PrintStringCentered("Error loading file!");
 
-	sprintf(buffer, "%d I'm not dead", x++);
+	sprintf(buffer, "%d I'm not dead", VSync(-1));
 	Font_ChangePosition(0, 240 - 32);
 	Font_PrintStringCentered(buffer);
 
