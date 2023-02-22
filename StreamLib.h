@@ -8,7 +8,6 @@ int current_chunk, target_chunk;
 int callback_running, sectors_read, last_sector_id, remaining_data_sectors, remaining_audio_sectors;
 int filepos;
 
-int spu_transfer_progress;
 int transferred_chunks;
 
 int checksum;
@@ -42,7 +41,6 @@ int StartStream(char *filename) {
 	remaining_audio_sectors = 0;
 
 	transferred_chunks = 0;
-	spu_transfer_progress = 0;
 	checksum = 0;
 
 	// Search for the requested file
@@ -78,7 +76,9 @@ int StartStream(char *filename) {
 
 	// Transfer the initial buffer to the SPU
 
-	SpuSetKey(SPU_OFF, SPU_ALLCH);
+	SpuSetKey(SPU_OFF, SPU_0CH | SPU_1CH);
+
+	SpuIsTransferCompleted(SPU_TRANSFER_WAIT);	// Just in case
 
 	SpuSetTransferStartAddr(0x1010);
 	SpuWrite(audiobuffer, 65536);
@@ -123,55 +123,37 @@ int StartStream(char *filename) {
 }
 
 int ProcessStream() {
-	if(SpuGetIRQ() == SPU_OFF && spu_transfer_progress == 0) {
-		spu_transfer_progress = 1;
-	}
+	if(SpuGetIRQ() == SPU_OFF) {
+		SpuIsTransferCompleted(SPU_TRANSFER_WAIT);	// Just in case
 
-	switch(spu_transfer_progress) {
-		case 1:
-			if(!SpuIsTransferCompleted(SPU_TRANSFER_PEEK)) break;
+		// Load left channel data to SPU memory
 
-			// Load left channel data to SPU memory
+		if(last_sector_id == 0xFFFF && transferred_chunks >= current_chunk) {
+			return 1;
+		}
 
-			if(last_sector_id == 0xFFFF && transferred_chunks >= current_chunk) {
-				return 1;
-				break;
-			}
+		SpuSetTransferStartAddr((transferred_chunks & 1) ? 0x11010 : 0x1010);
+		SpuWrite(audiobuffer + ((transferred_chunks & 3) << 17), 65536);
+		SpuIsTransferCompleted(SPU_TRANSFER_WAIT);
 
-			SpuSetTransferStartAddr((transferred_chunks & 1) ? 0x11010 : 0x1010);
-			SpuWrite(audiobuffer + ((transferred_chunks & 3) << 17), 65536);
+		// Load right channel data to SPU memory
 
-			spu_transfer_progress++;
-			break;
+		SpuSetTransferStartAddr((transferred_chunks & 1) ? 0x31010 : 0x21010);
+		SpuWrite(audiobuffer + ((transferred_chunks & 3) << 17) + 65536, 65536);
+		SpuIsTransferCompleted(SPU_TRANSFER_WAIT);
 
-		case 2:
-			if(!SpuIsTransferCompleted(SPU_TRANSFER_PEEK)) break;
+		transferred_chunks++;
 
-			// Load right channel data to SPU memory
+		// Load new chunk from disc, if necessary
 
-			SpuSetTransferStartAddr((transferred_chunks & 1) ? 0x31010 : 0x21010);
-			SpuWrite(audiobuffer + ((transferred_chunks & 3) << 17) + 65536, 65536);
+		if(last_sector_id != 0xFFFF) {
+			target_chunk++;
 
-			transferred_chunks++;
-			spu_transfer_progress++;
-			break;
+			if(!callback_running) ContinueCD();
+		}
 
-		case 3:
-			if(!SpuIsTransferCompleted(SPU_TRANSFER_PEEK)) break;
-
-			// Load new chunk from disc, if necessary
-
-			if(last_sector_id != 0xFFFF) {
-				target_chunk++;
-
-				if(!callback_running) ContinueCD();
-			}
-
-			spu_transfer_progress = 0;
-			SpuSetIRQAddr((transferred_chunks & 1) ? 0x21020 : 0x31020);
-			SpuSetIRQ(SPU_RESET);
-
-			break;
+		SpuSetIRQAddr((transferred_chunks & 1) ? 0x21020 : 0x31020);
+		SpuSetIRQ(SPU_RESET);
 	}
 
 	return 0;

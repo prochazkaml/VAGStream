@@ -111,6 +111,8 @@ void init() {
 
 	SpuSetVoiceAttr(&s_attr);
 	
+	SpuSetKey(SPU_OFF, SPU_ALLCH);
+
 	CdInit();
 }
 

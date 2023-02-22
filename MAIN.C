@@ -91,7 +91,7 @@ void debug_screen() {
 	Font_ChangePosition(0, 240 - 64);
 	Font_PrintStringCentered(buffer);
 
-	sprintf(buffer, "%d %d %d I'm not dead", control, spu_transfer_progress, x++);
+	sprintf(buffer, "%d %d I'm not dead", control, x++);
 	Font_ChangePosition(0, 240 - 32);
 	Font_PrintStringCentered(buffer);
 
