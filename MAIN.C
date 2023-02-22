@@ -102,7 +102,7 @@ void error_screen() {
 	char buffer[64];
 	static int x = 0;
 
-	Display();
+	PrepDisplay();
 
 	Font_ChangeColor(255, 255, 255);
 
@@ -112,21 +112,26 @@ void error_screen() {
 	sprintf(buffer, "%d I'm not dead", x++);
 	Font_ChangePosition(0, 240 - 32);
 	Font_PrintStringCentered(buffer);
+
+	Display();
 }
 
 void subthread() {
 	if(StartStream("\\TEST.PAK;1")) {
+		control = -1;
+		while(control != 1);
+
+		control = 2;
 		while(1);
 	}
 
-	while(control == 0) {
+	while(control != 1) {
 		if(ProcessStream()) break;
 	}
 		
 	StopStream();
 
 	control = 2;
-
 	while(1);
 }
 
@@ -148,7 +153,10 @@ int main() {
 		control = 0;
 
 		while(control < 2) {
-			debug_screen();
+			if(control >= 0)
+				debug_screen();
+			else
+				error_screen();
 
 			padx = ParsePad(0, 0);
 
