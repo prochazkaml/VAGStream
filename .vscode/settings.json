@@ -7,6 +7,7 @@
 		"BALLS.C": "cpp",
 		"syslib.h": "c",
 		"3dlib.h": "c",
-		"LIBGS.H": "cpp"
-	}
+		"LIBGS.H": "cpp",
+		"LIBGTE.H": "cpp"
+	},
 }

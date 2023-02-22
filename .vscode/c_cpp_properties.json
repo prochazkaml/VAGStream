@@ -1,0 +1,15 @@
+{
+    "configurations": [
+        {
+			"name": "PlayStation",
+            "includePath": [
+                "~/.psyq/drive_c/psyq/include/"
+            ],
+            "intelliSenseMode": "linux-gcc-x64",
+            "compilerPath": "/sbin/clang",
+            "cStandard": "c17",
+            "cppStandard": "c++14"
+        }
+    ],
+    "version": 4
+}

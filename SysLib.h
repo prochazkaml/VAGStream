@@ -1,4 +1,4 @@
-#include <sys/types.h>
+#include <SYS/TYPES.H>
 #include <LIBGTE.H>
 #include <LIBGPU.H>
 #include <LIBGS.H>

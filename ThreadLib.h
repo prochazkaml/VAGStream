@@ -1,4 +1,4 @@
-#include <sys/types.h>
+#include <SYS/TYPES.H>
 #include <KERNEL.H>
 
 void InitSubThread(void (*threadfun)());

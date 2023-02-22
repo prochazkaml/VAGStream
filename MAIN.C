@@ -1,5 +1,5 @@
-#include <sys/types.h>
-#include <KERNEL.h>
+#include <SYS/TYPES.H>
+#include <KERNEL.H>
 #include <LIBETC.H>
 #include <LIBGTE.H>
 #include <LIBGPU.H>
