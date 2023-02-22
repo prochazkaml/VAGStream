@@ -1,3 +1,20 @@
+// Camera coordinates
+struct {
+	int		x, y, z;
+	int		pan, til, rol;
+	VECTOR	pos;
+	SVECTOR rot;
+	GsRVIEW2 view;
+	GsCOORDINATE2 coord2;
+} Camera = {0};
+
+typedef struct {
+	int x, y, z, pan, til;
+} Player_t;
+
+// Lighting coordinates
+GsF_LIGHT pslt;
+
 void CalculateCamera() {
 	VECTOR	vec;
 	GsVIEW2 view;
@@ -37,7 +54,7 @@ void PutObject(VECTOR pos, SVECTOR rot, GsDOBJ2 *obj) {
 	GsSetLsMatrix(&omtx);
 	
 	// Sort the object!
-	GsSortObject4(obj, &myOT[myActiveBuff], 14-OT_LENGTH, getScratchAddr(0));
+	GsSortObject4(obj, &OT[ActiveBuff], 14-OT_LENGTH, getScratchAddr(0));
 }
 
 void PutObjectScaled(VECTOR pos, SVECTOR rot, VECTOR scl, GsDOBJ2 *obj) {
@@ -63,7 +80,7 @@ void PutObjectScaled(VECTOR pos, SVECTOR rot, VECTOR scl, GsDOBJ2 *obj) {
 	GsSetLsMatrix(&omtx);
 	
 	// Sort the object!
-	GsSortObject4(obj, &myOT[myActiveBuff], 14-OT_LENGTH, getScratchAddr(0));
+	GsSortObject4(obj, &OT[ActiveBuff], 14-OT_LENGTH, getScratchAddr(0));
 }
 
 
@@ -108,3 +125,27 @@ int LinkModel(u_long *tmd, GsDOBJ2 *obj) {
 	
 }
 
+void Init_3DLib() {
+	GsInit3D();
+	GsSetProjection(CENTERX);
+	
+	// Initialize coordinates for the camera (it will be used as a base for future matrix calculations)
+
+	GsInitCoordinate2(WORLD, &Camera.coord2);
+
+	// Set the ambient color (for lighting)
+
+	GsSetAmbient(ONE/4, ONE/4, ONE/4);
+	
+	// Set the default lighting mode
+
+	GsSetLightMode(0);
+	
+	// Set the light source coordinates
+
+	pslt.vx = 0;
+	pslt.vy = 0;
+	pslt.vz = 1000;
+	
+	pslt.r = 0xff; pslt.g = 0xff; pslt.b = 0xff;
+}

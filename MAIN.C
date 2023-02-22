@@ -16,7 +16,7 @@
 #include "Common.h"
 #include "FontLib.h"
 #include "SysLib.h"
-//#include "3DLib.h"
+#include "3DLib.h"
 #include "ThreadLib.h"
 #include "StreamLib.h"
 #include "InputLib.h"
@@ -77,7 +77,7 @@ void debug_screen() {
 	i = 320 * ((current_chunk - transferred_chunks) * 64 - remaining_audio_sectors) / 256;
 
 	setXY4(&buffermeter, 0, 240 - 160, i, 240 - 160, 0, 240 - 128, i, 240 - 128);
-	GsSortPoly(&buffermeter, &myOT[myActiveBuff], OT_ENTRIES-1);
+	GsSortPoly(&buffermeter, &OT[ActiveBuff], OT_ENTRIES-1);
 
 	sprintf(buffer, "Buffer %d %% full", i * 100 / 320);
 	Font_ChangePosition(-320, 240 - 160);

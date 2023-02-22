@@ -4,6 +4,7 @@
 		"array": "cpp",
 		"string_view": "cpp",
 		"TUTO4.C": "cpp",
-		"BALLS.C": "cpp"
+		"BALLS.C": "cpp",
+		"syslib.h": "c"
 	}
 }

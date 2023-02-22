@@ -1,20 +1,3 @@
-// Camera coordinates
-struct {
-	int		x, y, z;
-	int		pan, til, rol;
-	VECTOR	pos;
-	SVECTOR rot;
-	GsRVIEW2 view;
-	GsCOORDINATE2 coord2;
-} Camera = {0};
-
-typedef struct {
-	int x, y, z, pan, til;
-} Player_t;
-
-// Lighting coordinates
-GsF_LIGHT pslt;
-
 #define SCREEN_XRES		640
 #define SCREEN_YRES 	480
 #define DITHER			1
@@ -28,10 +11,10 @@ GsF_LIGHT pslt;
 #define OT_ENTRIES	1<<OT_LENGTH
 #define PACKETMAX	2048
 
-GsOT		myOT[2];						// OT handlers
-GsOT_TAG	myOT_TAG[2][OT_ENTRIES];		// OT tables
-PACKET		myPacketArea[2][PACKETMAX*24];	// Packet buffers
-int			myActiveBuff=0;					// Page index counter
+GsOT OT[2]; // OT handlers
+GsOT_TAG OT_TAG[2][OT_ENTRIES]; // OT tables
+PACKET PacketArea[2][PACKETMAX * 24]; // Packet buffers
+int ActiveBuff = 0; // Active buffer
 
 unsigned long __ramsize =   0x002000000; // force 2 megabytes of RAM
 unsigned long __stacksize = 0x00004000; // force 16 kilobytes of stack

@@ -26,8 +26,6 @@ void init() {
 	SpuCommonAttr c_attr;
 	SpuVoiceAttr s_attr;
 	
-	SVECTOR VScale={0};
-
 	ResetCallback();
 
 	// Initialize the GS
@@ -40,39 +38,18 @@ void init() {
 	
 	// Prepare the ordering tables
 
-	myOT[0].length	=OT_LENGTH;
-	myOT[1].length	=OT_LENGTH;
-	myOT[0].org		=myOT_TAG[0];
-	myOT[1].org		=myOT_TAG[1];
+	OT[0].length = OT_LENGTH;
+	OT[1].length = OT_LENGTH;
+	OT[0].org = OT_TAG[0];
+	OT[1].org = OT_TAG[1];
 	
-	GsClearOt(0, 0, &myOT[0]);
-	GsClearOt(0, 0, &myOT[1]);
+	GsClearOt(0, 0, &OT[0]);
+	GsClearOt(0, 0, &OT[1]);
 	
 	// Setup 3D and projection matrix
 
-	GsInit3D();
-	GsSetProjection(CENTERX);
-	
-	// Initialize coordinates for the camera (it will be used as a base for future matrix calculations)
+	Init_3DLib();
 
-	GsInitCoordinate2(WORLD, &Camera.coord2);
-
-	// Set the ambient color (for lighting)
-
-	GsSetAmbient(ONE/4, ONE/4, ONE/4);
-	
-	// Set the default lighting mode
-
-	GsSetLightMode(0);
-	
-	// Set the light source coordinates
-
-	pslt.vx = 0;
-	pslt.vy = 0;
-	pslt.vz = 1000;
-	
-	pslt.r = 0xff; pslt.g = 0xff; pslt.b = 0xff;
-	
 	// Load the textures
 
 	LoadTexture((u_long*)assets_FONT_TIM);
@@ -123,15 +100,15 @@ void PrepDisplay() {
 
 	// Get active buffer ID and clear the OT to be processed for the next frame
 
-	myActiveBuff = GsGetActiveBuff();
-	GsSetWorkBase((PACKET*)myPacketArea[myActiveBuff]);
-	GsClearOt(0, 0, &myOT[myActiveBuff]);
+	ActiveBuff = GsGetActiveBuff();
+	GsSetWorkBase((PACKET*)PacketArea[ActiveBuff]);
+	GsClearOt(0, 0, &OT[ActiveBuff]);
 }
 
 void Display() {
 	// Switch buffers, draw the old frame
 
 	GsSwapDispBuff();
-	GsSortClear(0, 0, 0, &myOT[myActiveBuff]);
-	GsDrawOt(&myOT[myActiveBuff]);	
+	GsSortClear(0, 0, 0, &OT[ActiveBuff]);
+	GsDrawOt(&OT[ActiveBuff]);	
 }

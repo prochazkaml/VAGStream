@@ -61,13 +61,13 @@ void Font_PutChar(char c) {
 		Letter.v = (c >> 4) << 5;
 		
 		if(lefttoright) {
-			GsSortFastSprite(&Letter, &myOT[myActiveBuff], 0);
+			GsSortFastSprite(&Letter, &OT[ActiveBuff], 0);
 			
 			Letter.x += FontWidth[c] + kerning;
 		} else {
 			Letter.x -= FontWidth[c];
 
-			GsSortFastSprite(&Letter, &myOT[myActiveBuff], 0);
+			GsSortFastSprite(&Letter, &OT[ActiveBuff], 0);
 			
 			Letter.x -= kerning;
 		}
