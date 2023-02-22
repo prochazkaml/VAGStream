@@ -12,7 +12,7 @@ set GO32=DPMISTACK 1000000
 set G032TMP=C:\WINDOWS\TEMP
 set TMPDIR=C:\WINDOWS\TEMP
 
-ccpsx -O3 -Xo$80010000 MAIN.C Assets.c -omain.cpe,main.sym,mem.map
+ccpsx -O3 -Xo$80010000 MAIN.C Assets.c 3DLib.c SysLib.c ThreadLib.c InputLib.c FontLib.c StreamLib.c -omain.cpe,main.sym,mem.map
 cpe2x32 main.cpe
 del main.sym
 del main.cpe
