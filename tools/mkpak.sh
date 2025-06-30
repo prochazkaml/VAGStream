@@ -8,8 +8,8 @@
 
 rm -f *.wav *.vag
 
-ffmpeg -i "$1" -f wav -bitexact -acodec pcm_s16le -ar 44100 -map_channel 0.0.0 left.wav
-ffmpeg -i "$1" -f wav -bitexact -acodec pcm_s16le -ar 44100 -map_channel 0.0.1 right.wav
+ffmpeg -i "$1" -f wav -bitexact -acodec pcm_s16le -ar 44100 -map_channel 0.0.0 -map_metadata -1 left.wav
+ffmpeg -i "$1" -f wav -bitexact -acodec pcm_s16le -ar 44100 -map_channel 0.0.1 -map_metadata -1 right.wav
 
 echo "Converting left channel to VAG..."
 wav2vag left.wav left.vag -raw
